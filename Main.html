@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmacy PLUS - Tu Farmacia Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 3px;}
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Basic font */
+        body {
+            font-family: 'Inter', sans-serif; /* Default Tailwind font */
+        }
+
+        /* Modal Transition */
+        .fade-enter-active, .fade-leave-active {
+          transition: opacity 0.3s ease;
+        }
+        .fade-enter-from, .fade-leave-to {
+          opacity: 0;
+        }
+        .scale-enter-active, .scale-leave-active {
+          transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .scale-enter-from, .scale-leave-to {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+
+        /* Simple logo style */
+        .logo-text {
+            font-weight: 800; /* Extra bold */
+            color: #00529b; /* Pharmacy blue */
+        }
+        .logo-plus {
+            color: #4caf50; /* Green plus */
+            font-weight: 900;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="app" class="container mx-auto p-4 md:p-8">
+
+        <header class="bg-white shadow-md rounded-lg p-4 mb-6 flex flex-col md:flex-row justify-between items-center">
+            <div class="text-3xl mb-4 md:mb-0">
+                <span class="logo-text">Pharmacy</span><span class="logo-plus">PLUS</span>
+            </div>
+            <div class="relative w-full md:w-1/2 lg:w-1/3">
+                <input type="text"
+                       v-model="searchTerm"
+                       placeholder="Buscar producto (ej: Paracetamol, Vitamina C)"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       aria-label="Buscar producto">
+                <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                </svg>
+            </div>
+        </header>
+
+        <main>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Nuestros Productos</h2>
+            <div v-if="filteredProducts.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <div v-for="product in filteredProducts" :key="product.id"
+                     @click="showProductDetails(product)"
+                     class="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-xl transition-shadow duration-200 ease-in-out flex flex-col">
+                    <img :src="product.imageUrl" :alt="'Imagen de ' + product.name"
+                         class="w-full h-40 object-cover bg-gray-200"
+                         onerror="this.onerror=null; this.src='https://placehold.co/200x150/e0e0e0/777?text=Imagen+no+disponible';"> <div class="p-4 flex flex-col flex-grow">
+                        <h3 class="text-md font-semibold text-gray-800 mb-1 truncate">{{ product.name }}</h3>
+                        <p class="text-sm text-gray-600 mb-3 flex-grow">{{ product.shortDesc }}</p>
+                        <p class="text-lg font-bold text-blue-600 self-end">${{ product.price.toFixed(2) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div v-else class="text-center py-10 text-gray-500">
+                <p>No se encontraron productos que coincidan con "{{ searchTerm }}".</p>
+                <p class="mt-2">Intenta con otro término de búsqueda.</p>
+            </div>
+        </main>
+
+        <transition name="fade">
+            <div v-if="isModalVisible"
+                 class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4"
+                 @click.self="closeModal"> <transition name="scale">
+                    <div v-if="selectedProduct" class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto relative">
+                        <button @click="closeModal" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-2xl leading-none z-10" aria-label="Cerrar detalle de producto">&times;</button>
+
+                        <div class="flex flex-col md:flex-row">
+                            <img :src="selectedProduct.imageUrl" :alt="'Imagen de ' + selectedProduct.name"
+                                 class="w-full md:w-1/2 h-64 md:h-auto object-cover bg-gray-200 md:rounded-l-lg"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/300x300/e0e0e0/777?text=Imagen+no+disponible';">
+
+                            <div class="p-6 md:w-1/2 flex flex-col">
+                                <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ selectedProduct.name }}</h2>
+                                <p class="text-sm text-gray-500 mb-4">Categoría: {{ selectedProduct.category }}</p>
+                                <p class="text-gray-700 mb-4 text-sm leading-relaxed flex-grow">{{ selectedProduct.longDesc }}</p>
+                                <div class="mt-auto pt-4 border-t border-gray-200 flex justify-between items-center">
+                                    <span class="text-2xl font-bold text-blue-700">${{ selectedProduct.price.toFixed(2) }}</span>
+                                    <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-150 ease-in-out">
+                                        Agregar al carrito
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                 </transition>
+            </div>
+        </transition>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        createApp({
+            setup() {
+                // --- Reactive State ---
+                const searchTerm = ref('');
+                const isModalVisible = ref(false);
+                const selectedProduct = ref(null);
+
+                // --- Sample Product Data ---
+                const products = ref([
+                    { id: 1, name: 'Paracetamol 500mg', category: 'Analgésicos', shortDesc: 'Alivio del dolor y fiebre.', longDesc: 'Tabletas de Paracetamol 500mg para el alivio sintomático del dolor leve a moderado y la fiebre. Caja con 20 tabletas.', price: 25.50, imageUrl: 'https://placehold.co/200x150/d1e0ff/00529b?text=Paracetamol' },
+                    { id: 2, name: 'Vitamina C Efervescente', category: 'Vitaminas', shortDesc: 'Refuerza el sistema inmune.', longDesc: 'Tabletas efervescentes sabor naranja con 1000mg de Vitamina C. Ayuda a fortalecer las defensas. Tubo con 10 tabletas.', price: 65.00, imageUrl: 'https://placehold.co/200x150/ffe0b3/e67e22?text=Vitamina+C' },
+                    { id: 3, name: 'Loratadina 10mg', category: 'Antialérgicos', shortDesc: 'Alivio de síntomas de alergia.', longDesc: 'Loratadina 10mg para el alivio de los síntomas asociados a la rinitis alérgica y urticaria. Caja con 10 tabletas.', price: 48.00, imageUrl: 'https://placehold.co/200x150/c8e6c9/4caf50?text=Loratadina' },
+                    { id: 4, name: 'Omeprazol 20mg', category: 'Gastrointestinal', shortDesc: 'Tratamiento de acidez estomacal.', longDesc: 'Cápsulas de Omeprazol 20mg indicadas para el tratamiento a corto plazo de los síntomas de reflujo (acidez, regurgitación). Caja con 14 cápsulas.', price: 75.80, imageUrl: 'https://placehold.co/200x150/ffcdd2/d32f2f?text=Omeprazol' },
+                    { id: 5, name: 'Ibuprofeno 400mg', category: 'Analgésicos', shortDesc: 'Antiinflamatorio y analgésico.', longDesc: 'Ibuprofeno 400mg en tabletas recubiertas para el alivio del dolor muscular, de cabeza, dental y menstrual. Caja con 10 tabletas.', price: 32.00, imageUrl: 'https://placehold.co/200x150/d1e0ff/00529b?text=Ibuprofeno' },
+                    { id: 6, name: 'Vendas Elásticas', category: 'Primeros Auxilios', shortDesc: 'Soporte para lesiones leves.', longDesc: 'Venda elástica de compresión media, ideal para soporte en esguinces o torceduras leves. 5cm x 4.5m.', price: 18.50, imageUrl: 'https://placehold.co/200x150/e0e0e0/555?text=Venda' },
+                    { id: 7, name: 'Alcohol Etílico 70%', category: 'Primeros Auxilios', shortDesc: 'Antiséptico para piel.', longDesc: 'Solución de alcohol etílico al 70% para la desinfección de la piel antes de inyecciones o para limpieza de heridas superficiales. Botella 250ml.', price: 22.00, imageUrl: 'https://placehold.co/200x150/e0f7fa/00bcd4?text=Alcohol' },
+                    { id: 8, name: 'Complejo B Tabletas', category: 'Vitaminas', shortDesc: 'Vitaminas para energía.', longDesc: 'Suplemento vitamínico del complejo B que ayuda al metabolismo energético y al funcionamiento del sistema nervioso. Frasco con 30 tabletas.', price: 95.00, imageUrl: 'https://placehold.co/200x150/ffe0b3/e67e22?text=Complejo+B' },
+                    { id: 9, name: 'Crema para Rozaduras', category: 'Cuidado del Bebé', shortDesc: 'Protege la piel del bebé.', longDesc: 'Crema protectora con óxido de zinc para prevenir y aliviar las rozaduras causadas por el pañal. Tubo 60g.', price: 55.00, imageUrl: 'https://placehold.co/200x150/e1bee7/8e24aa?text=Crema+Rozaduras' },
+                    { id: 10, name: 'Ambroxol Jarabe', category: 'Respiratorio', shortDesc: 'Expectorante y mucolítico.', longDesc: 'Jarabe de Ambroxol para adultos, indicado para facilitar la expulsión de flemas en afecciones respiratorias. Frasco 120ml.', price: 68.30, imageUrl: 'https://placehold.co/200x150/bbdefb/1e88e5?text=Ambroxol' },
+                    { id: 11, name: 'Melatonina 3mg', category: 'Suplementos', shortDesc: 'Ayuda para conciliar el sueño.', longDesc: 'Tabletas de Melatonina 3mg, auxiliar en el tratamiento del insomnio ocasional. Frasco con 60 tabletas.', price: 110.00, imageUrl: 'https://placehold.co/200x150/d1c4e9/5e35b1?text=Melatonina' },
+                    { id: 12, name: 'Gasa Estéril', category: 'Primeros Auxilios', shortDesc: 'Apósitos para heridas.', longDesc: 'Sobres individuales de gasa estéril de algodón, absorbente, para cubrir y proteger heridas. 10cm x 10cm. Paquete con 10 sobres.', price: 35.00, imageUrl: 'https://placehold.co/200x150/e0e0e0/555?text=Gasa' },
+                    { id: 13, name: 'Diclofenaco Gel', category: 'Analgésicos', shortDesc: 'Alivio tópico del dolor muscular.', longDesc: 'Gel con Diclofenaco para el alivio local del dolor e inflamación muscular y articular leve. Tubo 60g.', price: 85.50, imageUrl: 'https://placehold.co/200x150/d1e0ff/00529b?text=Diclofenaco+Gel' },
+                    { id: 14, name: 'Sal de Uvas Picot', category: 'Gastrointestinal', shortDesc: 'Antiácido y digestivo.', longDesc: 'Polvo efervescente para el alivio rápido de la acidez, indigestión y pesadez estomacal. Caja con 10 sobres.', price: 38.00, imageUrl: 'https://placehold.co/200x150/ffecb3/ffb300?text=Sal+de+Uvas' },
+                    { id: 15, name: 'Termómetro Digital', category: 'Equipo Médico', shortDesc: 'Medición rápida de temperatura.', longDesc: 'Termómetro digital de punta flexible para medición oral, rectal o axilar. Rápido y preciso.', price: 99.00, imageUrl: 'https://placehold.co/200x150/cfd8dc/546e7a?text=Termometro' },
+                    { id: 16, name: 'Naproxeno 250mg', category: 'Analgésicos', shortDesc: 'Dolor e inflamación.', longDesc: 'Naproxeno sódico 250mg para el alivio del dolor leve a moderado y la inflamación. Caja con 12 tabletas.', price: 42.50, imageUrl: 'https://placehold.co/200x150/d1e0ff/00529b?text=Naproxeno' },
+                    { id: 17, name: 'Curitas (Banditas Adhesivas)', category: 'Primeros Auxilios', shortDesc: 'Protección para heridas pequeñas.', longDesc: 'Banditas adhesivas flexibles y resistentes al agua para cubrir y proteger cortes y raspones menores. Caja con 30 unidades surtidas.', price: 28.00, imageUrl: 'https://placehold.co/200x150/e0e0e0/555?text=Curitas' },
+                    { id: 18, name: 'Shampoo Anticaspa', category: 'Cuidado Personal', shortDesc: 'Control y alivio de la caspa.', longDesc: 'Shampoo medicado para el control efectivo de la caspa y el alivio de la comezón asociada. Botella 200ml.', price: 115.00, imageUrl: 'https://placehold.co/200x150/b2ebf2/00acc1?text=Shampoo+Anticaspa' },
+                    { id: 19, name: 'Loperamida 2mg', category: 'Gastrointestinal', shortDesc: 'Control de la diarrea aguda.', longDesc: 'Loperamida 2mg para el control sintomático de la diarrea aguda no infecciosa en adultos. Caja con 8 tabletas.', price: 52.00, imageUrl: 'https://placehold.co/200x150/ffcdd2/d32f2f?text=Loperamida' },
+                    { id: 20, name: 'Multivitamínico Adulto', category: 'Vitaminas', shortDesc: 'Suplemento diario completo.', longDesc: 'Fórmula multivitamínica y multimineral diseñada para complementar la nutrición diaria de adultos. Frasco con 60 tabletas.', price: 150.00, imageUrl: 'https://placehold.co/200x150/ffe0b3/e67e22?text=Multivitaminico' },
+                ]);
+
+                // --- Computed Property for Filtering ---
+                const filteredProducts = computed(() => {
+                    if (!searchTerm.value) {
+                        return products.value; // Show all if search is empty
+                    }
+                    const lowerCaseSearch = searchTerm.value.toLowerCase();
+                    return products.value.filter(product =>
+                        product.name.toLowerCase().includes(lowerCaseSearch) ||
+                        product.shortDesc.toLowerCase().includes(lowerCaseSearch) ||
+                        product.category.toLowerCase().includes(lowerCaseSearch)
+                    );
+                });
+
+                // --- Methods ---
+                const showProductDetails = (product) => {
+                    selectedProduct.value = product;
+                    isModalVisible.value = true;
+                    document.body.style.overflow = 'hidden'; // Prevent background scroll
+                };
+
+                const closeModal = () => {
+                    isModalVisible.value = false;
+                    selectedProduct.value = null; // Clear selection
+                    document.body.style.overflow = ''; // Restore scroll
+                };
+
+                // --- Expose to Template ---
+                return {
+                    searchTerm,
+                    isModalVisible,
+                    selectedProduct,
+                    products, // Optional: expose if needed directly
+                    filteredProducts,
+                    showProductDetails,
+                    closeModal
+                };
+            }
+        }).mount('#app');
+    </script>
+
+</body>
+</html>
